@@ -10,10 +10,9 @@ class DriverListAPIView(APIView):
 
     def post(self, request):
         serializer = serializers.DriverSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
     def get(self, request):
@@ -31,22 +30,19 @@ class MissionListAPIView(APIView):
         if driver_id:
             driver = Driver.objects.get(id=driver_id)
             if driver.is_busy:
-                return Response({'message': 'Driver is already assigned to a mission.'},
-                                 status=status.HTTP_400_BAD_REQUEST)
+                return Response({'message': 'Driver is already assigned to a mission.'},status=status.HTTP_400_BAD_REQUEST)
             data['driver'] = driver.id
             serializer = serializers.MissionSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                driver.is_busy = True
-                driver.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            driver.is_busy = True
+            driver.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             serializer = serializers.MissionSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
     def get(self, request):
@@ -55,4 +51,28 @@ class MissionListAPIView(APIView):
         return Response(serializer.data)
     
 
-    
+
+class MissionDetailAPIView(APIView):
+
+
+    def patch(self, request, mission_id):
+        try:
+            mission = Mission.objects.get(id=mission_id)
+            driver_id = request.data.get('driver')
+            if driver_id is None:
+                return Response({'message': 'Driver ID is required.'},status=status.HTTP_400_BAD_REQUEST)
+            
+            driver = Driver.objects.get(id=driver_id)
+            if driver.is_busy:
+                return Response({'message': 'Driver is already assigned to a mission.'},status=status.HTTP_400_BAD_REQUEST)
+            
+            mission.driver = driver
+            mission.save()
+            driver.is_busy = True
+            driver.save()
+            
+            return Response({'message': 'Driver assigned successfully.'},status=status.HTTP_200_OK)
+        except Mission.DoesNotExist:
+            return Response({'message': 'Mission not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Driver.DoesNotExist:
+            return Response({'message': 'Driver not found.'},status=status.HTTP_404_NOT_FOUND)
