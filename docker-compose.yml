@@ -1,0 +1,14 @@
+version: '3'
+services:
+  web:
+    build: .
+    ports:
+      - 8000:8000
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+  db:
+    image: sqlite:latest
+    volumes:
+      - ./db.sqlite3:/data/db.sqlite3
